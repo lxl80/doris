@@ -339,14 +339,20 @@ public class RequestPropertyDeriver extends PlanVisitor<Void, PlanContext> {
             // shuffle all column
             // TODO: for wide table, may be we should add a upper limit of shuffle columns
 
-            // TODO: open comment when support `enable_local_shuffle_planner` and change to REQUIRE
-            // intersect/except always need hash distribution, we use REQUIRE to auto select
-            // bucket shuffle or execution shuffle
+            // intersect/except always need hash distribution. Auto-selecting bucket shuffle
+            // (ShuffleType.REQUIRE) for set operation is only valid when the FE plans the local
+            // shuffle: with the BE-side local-shuffle planner the backend cannot infer the
+            // correct local shuffle type for the set sink/probe and computes wrong results, so
+            // fall back to EXECUTION_BUCKETED there.
+            ConnectContext setOperationContext = ConnectContext.get();
+            ShuffleType setOperationShuffleType = setOperationContext != null
+                    && setOperationContext.getSessionVariable().isEnableLocalShufflePlanner()
+                    ? ShuffleType.REQUIRE : ShuffleType.EXECUTION_BUCKETED;
             addRequestPropertyToChildren(setOperation.getRegularChildrenOutputs().stream()
                     .map(childOutputs -> childOutputs.stream()
                             .map(SlotReference::getExprId)
                             .collect(ImmutableList.toImmutableList()))
-                    .map(l -> PhysicalProperties.createHash(l, ShuffleType.EXECUTION_BUCKETED))
+                    .map(l -> PhysicalProperties.createHash(l, setOperationShuffleType))
                     .collect(Collectors.toList()));
         }
         return null;

@@ -2496,14 +2496,16 @@ public class PhysicalPlanTranslator extends DefaultPlanVisitor<PlanFragment, Pla
             setOperationNode.setColocate(true);
         }
 
-        // TODO: open comment when support `enable_local_shuffle_planner`
-        // for (Plan child : setOperation.children()) {
-        //     PhysicalPlan childPhysicalPlan = (PhysicalPlan) child;
-        //     if (JoinUtils.isStorageBucketed(childPhysicalPlan.getPhysicalProperties())) {
-        //         setOperationNode.setDistributionMode(DistributionMode.BUCKET_SHUFFLE);
-        //         break;
-        //     }
-        // }
+        // A storage-bucketed child means set-op bucket shuffle was chosen (only under the FE
+        // local-shuffle planner); mark the node BUCKET_SHUFFLE so the set sink/probe align by
+        // bucket instead of execution-bucketed hash.
+        for (Plan child : setOperation.children()) {
+            PhysicalPlan childPhysicalPlan = (PhysicalPlan) child;
+            if (JoinUtils.isStorageBucketed(childPhysicalPlan.getPhysicalProperties())) {
+                setOperationNode.setDistributionMode(DistributionMode.BUCKET_SHUFFLE);
+                break;
+            }
+        }
 
         return setOperationFragment;
     }
