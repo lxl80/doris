@@ -24,6 +24,7 @@ import org.apache.doris.analysis.PartitionKeyDesc;
 import org.apache.doris.analysis.SinglePartitionDesc;
 import org.apache.doris.analysis.TableName;
 import org.apache.doris.catalog.Column;
+import org.apache.doris.catalog.DataProperty;
 import org.apache.doris.catalog.Database;
 import org.apache.doris.catalog.Env;
 import org.apache.doris.catalog.MTMV;
@@ -34,9 +35,11 @@ import org.apache.doris.catalog.Type;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.Pair;
+import org.apache.doris.common.util.PropertyAnalyzer;
 import org.apache.doris.datasource.mvcc.MvccUtil;
 import org.apache.doris.mtmv.MTMVPartitionInfo.MTMVPartitionType;
 import org.apache.doris.rpc.RpcException;
+import org.apache.doris.thrift.TStorageMedium;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -394,6 +397,12 @@ public class MTMVPartitionUtil {
     public static void addPartition(MTMV mtmv, PartitionKeyDesc oldPartitionKeyDesc)
             throws DdlException {
         Map<String, String> partitionProperties = Maps.newHashMap();
+        TStorageMedium storageMedium = mtmv.getStorageMedium();
+        if (storageMedium != null
+                && !DataProperty.DEFAULT_STORAGE_MEDIUM.equals(storageMedium)) {
+            partitionProperties.put(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM,
+                    storageMedium.name());
+        }
         SinglePartitionDesc singlePartitionDesc = new SinglePartitionDesc(true,
                 generatePartitionName(oldPartitionKeyDesc),
                 oldPartitionKeyDesc, partitionProperties);
