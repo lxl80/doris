@@ -1734,6 +1734,13 @@ public class InternalCatalog implements CatalogIf<Database> {
             if (!properties.containsKey(PropertyAnalyzer.PROPERTIES_TDE_ALGORITHM)) {
                 properties.put(PropertyAnalyzer.PROPERTIES_TDE_ALGORITHM, olapTable.getTDEAlgorithm().name());
             }
+            if (!properties.containsKey(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM)
+                    && olapTable.getStorageMedium() != null) {
+                properties.put(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM,
+                        olapTable.getStorageMedium().name());
+                LOG.warn("[storage_medium] addPartition继承: partitionName={}, inherited storage_medium={}",
+                        partitionName, olapTable.getStorageMedium().name());
+            }
 
             singlePartitionDesc.analyze(partitionInfo.getPartitionColumns().size(), properties);
             partitionInfo.createAndCheckPartitionItem(singlePartitionDesc, isTempPartition);

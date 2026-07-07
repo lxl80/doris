@@ -395,8 +395,6 @@ public class MTMVPartitionUtil {
 
     }
 
-
-
     /**
      * add partition for mtmv like relatedPartitionId of relatedTable
      * `Env.getCurrentEnv().addPartition` has obtained the lock internally, but we do not obtain the lock here
