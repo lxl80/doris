@@ -153,13 +153,10 @@ public class MTMVPartitionUtil {
             throws AnalysisException {
         List<AllPartitionDesc> res = Lists.newArrayList();
         HashMap<String, String> partitionProperties = Maps.newHashMap();
-        // v3: 从 tableProperties 注入 storage_medium（CREATE 路径防御性合并）
         if (tableProperties != null) {
             String storageMedium = tableProperties.get(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM);
             if (!Strings.isNullOrEmpty(storageMedium)) {
                 partitionProperties.put(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM, storageMedium.toUpperCase());
-                LOG.info("[storage_medium] getPartitionDescsByRelatedTable injected storage_medium={}",
-                        storageMedium.toUpperCase());
             }
         }
 
@@ -406,7 +403,6 @@ public class MTMVPartitionUtil {
     public static void addPartition(MTMV mtmv, PartitionKeyDesc oldPartitionKeyDesc)
             throws DdlException {
         Map<String, String> partitionProperties = Maps.newHashMap();
-        // v3: 从 tableProperty.getProperties() 注入 storage_medium 到分区属性
         if (mtmv.getTableProperty() != null && mtmv.getTableProperty().getProperties() != null) {
             String storageMedium = mtmv.getTableProperty().getProperties()
                     .get(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM);

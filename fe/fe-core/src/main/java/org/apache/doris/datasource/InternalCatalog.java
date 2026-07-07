@@ -1738,16 +1738,12 @@ public class InternalCatalog implements CatalogIf<Database> {
                     && olapTable.getStorageMedium() != null) {
                 properties.put(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM,
                         olapTable.getStorageMedium().name());
-                LOG.warn("[storage_medium] addPartition继承: partitionName={}, inherited storage_medium={}",
+                LOG.warn("[storage_medium] addPartition inherit: partitionName={}, inherited storage_medium={}",
                         partitionName, olapTable.getStorageMedium().name());
             }
 
             singlePartitionDesc.analyze(partitionInfo.getPartitionColumns().size(), properties);
             partitionInfo.createAndCheckPartitionItem(singlePartitionDesc, isTempPartition);
-            LOG.warn("[storage_medium] addPartition analyze后: partitionName={}, dataProperty.medium={},"
-                    + " isStorageMediumSpecified={}",
-                    partitionName, singlePartitionDesc.getPartitionDataProperty().getStorageMedium(),
-                    singlePartitionDesc.getPartitionDataProperty().isStorageMediumSpecified());
 
             // get distributionInfo
             List<Column> baseSchema = olapTable.getBaseSchema();
@@ -3223,10 +3219,6 @@ public class InternalCatalog implements CatalogIf<Database> {
                     // just for remove entries in stmt.getProperties(),
                     // and then check if there still has unknown properties
                     olapTable.setStorageMedium(dataProperty.getStorageMedium());
-                    LOG.warn("[storage_medium] createOlapTable分区分支 setStorageMedium({}),"
-                            + " stmt.getProperties().has_storage_medium={}",
-                            dataProperty.getStorageMedium(),
-                            stmt.getProperties().containsKey(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM));
                     if (partitionInfo.getType() == PartitionType.RANGE) {
                         DynamicPartitionUtil.checkDynamicPartitionPropertyKeysValid(properties);
                         DynamicPartitionUtil.checkAndSetDynamicPartitionProperty(olapTable, properties, db);
