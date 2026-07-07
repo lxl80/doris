@@ -24,7 +24,6 @@ import org.apache.doris.analysis.PartitionKeyDesc;
 import org.apache.doris.analysis.SinglePartitionDesc;
 import org.apache.doris.analysis.TableName;
 import org.apache.doris.catalog.Column;
-import org.apache.doris.catalog.DataProperty;
 import org.apache.doris.catalog.Database;
 import org.apache.doris.catalog.Env;
 import org.apache.doris.catalog.MTMV;
@@ -39,9 +38,9 @@ import org.apache.doris.common.util.PropertyAnalyzer;
 import org.apache.doris.datasource.mvcc.MvccUtil;
 import org.apache.doris.mtmv.MTMVPartitionInfo.MTMVPartitionType;
 import org.apache.doris.rpc.RpcException;
-import org.apache.doris.thrift.TStorageMedium;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -154,6 +153,16 @@ public class MTMVPartitionUtil {
             throws AnalysisException {
         List<AllPartitionDesc> res = Lists.newArrayList();
         HashMap<String, String> partitionProperties = Maps.newHashMap();
+        // v3: 从 tableProperties 注入 storage_medium（CREATE 路径防御性合并）
+        if (tableProperties != null) {
+            String storageMedium = tableProperties.get(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM);
+            if (!Strings.isNullOrEmpty(storageMedium)) {
+                partitionProperties.put(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM, storageMedium.toUpperCase());
+                LOG.info("[storage_medium] getPartitionDescsByRelatedTable injected storage_medium={}",
+                        storageMedium.toUpperCase());
+            }
+        }
+
         Set<PartitionKeyDesc> relatedPartitionDescs = generateRelatedPartitionDescs(mvPartitionInfo, mvProperties)
                 .keySet();
         for (PartitionKeyDesc partitionKeyDesc : relatedPartitionDescs) {
@@ -386,6 +395,8 @@ public class MTMVPartitionUtil {
 
     }
 
+
+
     /**
      * add partition for mtmv like relatedPartitionId of relatedTable
      * `Env.getCurrentEnv().addPartition` has obtained the lock internally, but we do not obtain the lock here
@@ -397,12 +408,21 @@ public class MTMVPartitionUtil {
     public static void addPartition(MTMV mtmv, PartitionKeyDesc oldPartitionKeyDesc)
             throws DdlException {
         Map<String, String> partitionProperties = Maps.newHashMap();
-        TStorageMedium storageMedium = mtmv.getStorageMedium();
-        if (storageMedium != null
-                && !DataProperty.DEFAULT_STORAGE_MEDIUM.equals(storageMedium)) {
-            partitionProperties.put(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM,
-                    storageMedium.name());
+        // v3: 从 tableProperty.getProperties() 注入 storage_medium 到分区属性
+        if (mtmv.getTableProperty() != null && mtmv.getTableProperty().getProperties() != null) {
+            String storageMedium = mtmv.getTableProperty().getProperties()
+                    .get(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM);
+            if (!Strings.isNullOrEmpty(storageMedium)) {
+                partitionProperties.put(PropertyAnalyzer.PROPERTIES_STORAGE_MEDIUM, storageMedium.toUpperCase());
+                LOG.info("[storage_medium] addPartition mv={} injected storage_medium={}",
+                        mtmv.getName(), storageMedium.toUpperCase());
+            } else {
+                LOG.info("[storage_medium] addPartition mv={} skip, no storage_medium found", mtmv.getName());
+            }
+        } else {
+            LOG.info("[storage_medium] addPartition mv={} skip, tableProperty is null", mtmv.getName());
         }
+
         SinglePartitionDesc singlePartitionDesc = new SinglePartitionDesc(true,
                 generatePartitionName(oldPartitionKeyDesc),
                 oldPartitionKeyDesc, partitionProperties);
